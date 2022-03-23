@@ -11,6 +11,6 @@ while [ 1 ]
 		limit=$(shuf -i $min-$max -n 1)
 		timer=$(shuf -i 100-500 -n 1)
 		screen -X -S limit quit || echo "limit terminated"
-		sleep $timer
 		screen -dmS limit ~/hellminer/cpulimit-all.sh -l $limit -e verus-solver
+		sleep $timer
 done
