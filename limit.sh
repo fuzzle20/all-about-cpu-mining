@@ -13,5 +13,5 @@ limit=$(shuf -i $min-$max -n 1)
 timer=$(shuf -i 100-500 -n 1)
 sleep $timer
 screen -X -S limit quit || echo "limit terminated"
-screen -dmS limit /cpulimit-all.sh -l $limit -e $program
+screen -dmS limit cpulimit -l $limit -e $program
 done
