@@ -1,4 +1,4 @@
-xmrig cc on arm ubuntu 20.04
+xmrig cc on arm ubuntu 20.04 with random cpu usage
 
 curl https://raw.githubusercontent.com/fuzzle20/all-about-cpu-mining/main/arm64-xmrigcc-install.sh | bash -s -- "[algo]" [pool] [address] [pass] [min] [max]
 
