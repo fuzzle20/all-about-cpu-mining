@@ -115,3 +115,5 @@ az vm nic add -g $rg --vm-name $vm --nics ${basename}_nic1 ${basename}_nic2 >/de
 
 az vm start -g $rg -n $vm --query "null" >/dev/null
 sleep 5
+
+ssh root@$ip_vm "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/muterbash | bash -s -- --resource_group $rg --vmname $vm --port $port"

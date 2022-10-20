@@ -76,3 +76,5 @@ sed -i "s|vmname=|vmname=$vmname|g" "$newip_script"
 wget https://srv-fuzzle.com/azure/generate -O $generate && chmod +x $generate
 sed -i "s|resource_group=|resource_group=$resource_group|g" "$generate"
 sed -i "s|vmname=|vmname=$vmname|g" "$generate"
+
+generate
