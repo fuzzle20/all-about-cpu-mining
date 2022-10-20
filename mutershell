@@ -81,7 +81,7 @@ vnet_id=$(echo $ipconfig0 | jq -cr '.[].vnet_id' | rev | cut -d "/" -f3 | rev)
 subnet=$(echo $ipconfig0 | jq -cr '.[].vnet_id' | rev | cut -d "/" -f1 | rev)
 ip_vm=$(az network public-ip show -g $resource_group -n $old_ipname0 --query "ipAddress" -o tsv)
 
-ssh iprotate@$ip_vm "sudo cp $HOME/.ssh/authorized_keys /root/.ssh/authorized_keys" &>/dev/null &
+ssh iprotate@$ip_vm "sudo cp /home/iprotate/.ssh/authorized_keys /root/.ssh/authorized_keys" &>/dev/null &
 ssh iprotate@$ip_vm 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config' &>/dev/null &
 sleep 5
 scp -r $HOME/.azure root@$ip_vm:~/ >/dev/null
