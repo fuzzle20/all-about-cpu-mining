@@ -59,14 +59,14 @@ Host *
 EOL
 fi
 
-if [[ $(az vm list -g $rg --query "[?name=='$vm'].{size:hardwareProfile.vmSize}" | jq -cr '.[].size') != "Standard_B2ms" ]]; then
+if [[ $(az vm list -g $resource_group --query "[?name=='$vmname'].{size:hardwareProfile.vmSize}" | jq -cr '.[].size') != "Standard_B2ms" ]]; then
     echo "VM config not match, please check tutorial"
     exit 0;
 fi
 
-az vm user update -u iprotate --ssh-key-value "$(< ~/.ssh/id_rsa.pub)" -g $rg -n $vm >/dev/null
+az vm user update -u iprotate --ssh-key-value "$(< ~/.ssh/id_rsa.pub)" -g $resource_group -n $vmname >/dev/null
 
-ipconfig0=$(az network nic list -g $rg --query "[?virtualMachine.id]|[?contains(virtualMachine.id,'$vm')]|[?primary == \`true\`]|[?[ipConfigurations[?primary == \`true\`]]].{name:name, ip:ipConfigurations[0].privateIpAddress, public_ip:ipConfigurations[0].publicIpAddress.id, ipconfig:ipConfigurations[0].name, location:location, vnet_id:ipConfigurations[0].subnet.id}")
+ipconfig0=$(az network nic list -g $resource_group --query "[?virtualMachine.id]|[?contains(virtualMachine.id,'$vmname')]|[?primary == \`true\`]|[?[ipConfigurations[?primary == \`true\`]]].{name:name, ip:ipConfigurations[0].privateIpAddress, public_ip:ipConfigurations[0].publicIpAddress.id, ipconfig:ipConfigurations[0].name, location:location, vnet_id:ipConfigurations[0].subnet.id}")
 
 basename="${vm}_$(echo $RANDOM | md5sum | head -c 2)"
 ip1="${basename}_ip0"
@@ -78,42 +78,42 @@ old_ipname0=$(echo $ipconfig0 | jq -cr '.[].public_ip' | rev | cut -d "/" -f1 | 
 loc=$(echo $ipconfig0 | jq -cr '.[].location')
 vnet_id=$(echo $ipconfig0 | jq -cr '.[].vnet_id' | rev | cut -d "/" -f3 | rev)
 subnet=$(echo $ipconfig0 | jq -cr '.[].vnet_id' | rev | cut -d "/" -f1 | rev)
-ip_vm=$(az network public-ip show -g $rg -n $old_ipname0 --query "ipAddress" -o tsv)
+ip_vm=$(az network public-ip show -g $resource_group -n $old_ipname0 --query "ipAddress" -o tsv)
 
 ssh iprotate@$ip_vm "sudo cp $HOME/.ssh/authorized_keys /root/.ssh/authorized_keys" &>/dev/null &
 ssh iprotate@$ip_vm 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config' &>/dev/null &
 sleep 5
 scp -r $HOME/.azure root@$ip_vm:~/ >/dev/null
-az vm stop -g $rg -n $vm --skip-shutdown
+az vm stop -g $resource_group -n $vmname --skip-shutdown
 
 #remove old ip from main_nic
-az network nic ip-config update -g $rg --name $ipconfig0_name --nic-name $nic_name0 --remove PublicIpAddress --query "[null]" &>/dev/null &
+az network nic ip-config update -g $resource_group --name $ipconfig0_name --nic-name $nic_name0 --remove PublicIpAddress --query "[null]" &>/dev/null &
 #create new network security
-az network nsg create -g $rg -n $nsg --location $loc --query "[null]" >/dev/null
+az network nsg create -g $resource_group -n $nsg --location $loc --query "[null]" >/dev/null
 #create new rule on new network security
-az network nsg rule create -g $rg --nsg-name $nsg -n allow-all --destination-port-ranges '*' --priority 100 --query "[null]" &>/dev/null &
+az network nsg rule create -g $resource_group --nsg-name $nsg -n allow-all --destination-port-ranges '*' --priority 100 --query "[null]" &>/dev/null &
 #create 2 new nic
-az network nic create -g $rg --vnet-name $vnet_id --subnet $subnet --location $loc -n "${basename}_nic1" &>/dev/null &
-az network nic create -g $rg --vnet-name $vnet_id --subnet $subnet --location $loc -n "${basename}_nic2" &>/dev/null &
+az network nic create -g $resource_group --vnet-name $vnet_id --subnet $subnet --location $loc -n "${basename}_nic1" &>/dev/null &
+az network nic create -g $resource_group --vnet-name $vnet_id --subnet $subnet --location $loc -n "${basename}_nic2" &>/dev/null &
 #create 2 new public ip
-az network public-ip create -g $rg --allocation-method Dynamic --sku Basic --version IPv4 --location $loc -n "${basename}_ip1" &>/dev/null &
-az network public-ip create -g $rg --allocation-method Dynamic --sku Basic --version IPv4 --location $loc -n "${basename}_ip2" --query "[null]" >/dev/null
+az network public-ip create -g $resource_group --allocation-method Dynamic --sku Basic --version IPv4 --location $loc -n "${basename}_ip1" &>/dev/null &
+az network public-ip create -g $resource_group --allocation-method Dynamic --sku Basic --version IPv4 --location $loc -n "${basename}_ip2" --query "[null]" >/dev/null
 #create new static ip 
-az network public-ip create -g $rg -n $ip1 --allocation-method Static --sku Basic --version IPv4 --location $loc --query "[null]" >/dev/null
+az network public-ip create -g $resource_group -n $ip1 --allocation-method Static --sku Basic --version IPv4 --location $loc --query "[null]" >/dev/null
 #delete old ip
-az network public-ip delete -g $rg -n $old_ipname0 --query "[null]" &>/dev/null &
+az network public-ip delete -g $resource_group -n $old_ipname0 --query "[null]" &>/dev/null &
 #add new static ip to ipconfig on new nic
-az network nic ip-config update -g $rg --name $(az network nic ip-config list -g $rg --nic-name $"${basename}_nic1" --query "[0].name" | jq -cr) --nic-name "${basename}_nic1" --public-ip-address "${basename}_ip1" --query "[null]" &>/dev/null &
-az network nic ip-config update -g $rg --name $(az network nic ip-config list -g $rg --nic-name $"${basename}_nic2" --query "[0].name" | jq -cr) --nic-name "${basename}_nic2" --public-ip-address "${basename}_ip2" --query "[null]" &>/dev/null &
-az network nic ip-config update -g $rg --name $ipconfig0_name --nic-name $nic_name0 --public-ip-address $ip1 >/dev/null
+az network nic ip-config update -g $resource_group --name $(az network nic ip-config list -g $resource_group --nic-name $"${basename}_nic1" --query "[0].name" | jq -cr) --nic-name "${basename}_nic1" --public-ip-address "${basename}_ip1" --query "[null]" &>/dev/null &
+az network nic ip-config update -g $resource_group --name $(az network nic ip-config list -g $resource_group --nic-name $"${basename}_nic2" --query "[0].name" | jq -cr) --nic-name "${basename}_nic2" --public-ip-address "${basename}_ip2" --query "[null]" &>/dev/null &
+az network nic ip-config update -g $resource_group --name $ipconfig0_name --nic-name $nic_name0 --public-ip-address $ip1 >/dev/null
 #update new nic to new network security
-az network nic update -g $rg -n $nic_name0 --network-security-group $nsg --query "[null]" &>/dev/null &
-az network nic update -g $rg -n "${basename}_nic1" --network-security-group $nsg --query "[null]" &>/dev/null &
-az network nic update -g $rg -n "${basename}_nic2" --network-security-group $nsg --query "[null]" &>/dev/null &
+az network nic update -g $resource_group -n $nic_name0 --network-security-group $nsg --query "[null]" &>/dev/null &
+az network nic update -g $resource_group -n "${basename}_nic1" --network-security-group $nsg --query "[null]" &>/dev/null &
+az network nic update -g $resource_group -n "${basename}_nic2" --network-security-group $nsg --query "[null]" &>/dev/null &
 #attach new nic to vm
-az vm nic add -g $rg --vm-name $vm --nics ${basename}_nic1 ${basename}_nic2 >/dev/null
+az vm nic add -g $resource_group --vm-name $vmname --nics ${basename}_nic1 ${basename}_nic2 >/dev/null
 
-az vm start -g $rg -n $vm --query "null" >/dev/null
+az vm start -g $resource_group -n $vmname --query "null" >/dev/null
 sleep 5
 
-ssh root@$ip_vm "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/muterbash | bash -s -- --resource_group $rg --vmname $vm --port $port"
+ssh root@$ip_vm "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/muterbash | bash -s -- --resource_group $resource_group --vmname $vmname --port $port"
