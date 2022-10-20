@@ -88,7 +88,9 @@ scp -r $HOME/.azure root@$ip_vm:~/ >/dev/null
 az vm stop -g $resource_group -n $vmname --skip-shutdown
 
 #remove old ip from main_nic
-az network nic ip-config update -g $resource_group --name $ipconfig0_name --nic-name $nic_name0 --remove PublicIpAddress --query "[null]" &>/dev/null &
+az network nic ip-config update -g $resource_group --name $ipconfig0_name --nic-name $nic_name0 --remove PublicIpAddress --query "[null]" >/dev/null
+#delete old ip
+az network public-ip delete -g $resource_group -n $old_ipname0 --query "[null]" >/dev/null
 #create new network security
 az network nsg create -g $resource_group -n $nsg --location $loc --query "[null]" >/dev/null
 #create new rule on new network security
@@ -101,8 +103,6 @@ az network public-ip create -g $resource_group --allocation-method Dynamic --sku
 az network public-ip create -g $resource_group --allocation-method Dynamic --sku Basic --version IPv4 --location $loc -n "${basename}_ip2" --query "[null]" >/dev/null
 #create new static ip 
 az network public-ip create -g $resource_group -n $ip1 --allocation-method Static --sku Basic --version IPv4 --location $loc --query "[null]" >/dev/null
-#delete old ip
-az network public-ip delete -g $resource_group -n $old_ipname0 --query "[null]" &>/dev/null &
 #add new static ip to ipconfig on new nic
 az network nic ip-config update -g $resource_group --name $(az network nic ip-config list -g $resource_group --nic-name $"${basename}_nic1" --query "[0].name" | jq -cr) --nic-name "${basename}_nic1" --public-ip-address "${basename}_ip1" --query "[null]" &>/dev/null &
 az network nic ip-config update -g $resource_group --name $(az network nic ip-config list -g $resource_group --nic-name $"${basename}_nic2" --query "[0].name" | jq -cr) --nic-name "${basename}_nic2" --public-ip-address "${basename}_ip2" --query "[null]" &>/dev/null &
