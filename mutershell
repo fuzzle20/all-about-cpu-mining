@@ -59,6 +59,7 @@ Host *
 EOL
 fi
 echo "rg=$resource_group , vmname=$vmname"
+
 if [[ $(az vm list -g $resource_group --query "[?name=='$vmname'].{size:hardwareProfile.vmSize}" | jq -cr '.[].size') != "Standard_B2ms" ]]; then
     echo "VM config not match, please check tutorial"
     exit 0;
