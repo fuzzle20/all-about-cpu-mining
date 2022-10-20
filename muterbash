@@ -1,0 +1,78 @@
+#!/bin/bash
+
+help()
+{
+    echo "
+Usage: iprotate_azure.sh
+               [ -r | --resource_group ]
+               [ -v | --vmname         ]
+               [ -p | --port           ]
+               [ -h | --help           ]"
+    exit 2
+}
+
+
+SHORT=r:,v:,p:,h
+LONG=resource_group:,vmname:,port:,help
+OPTS=$(getopt --alternative --name iprotate_azure --options $SHORT --longoptions $LONG -- "$@")
+
+eval set -- "$OPTS"
+
+while :
+do
+  case "$1" in
+    -r | --resource_group )
+      resource_group="$2"
+      shift 2
+      ;;
+    -v | --vmname )
+      vmname="$2"
+      shift 2
+      ;;
+    -p | --port )
+      port="$2"
+      shift 2
+      ;;
+    -h | --help)
+      help
+      ;;
+    --)
+      shift;
+      break
+      ;;
+    *)
+      echo "Unexpected option: $1"
+      ;;
+  esac
+done
+
+echo "Starting Process Setup Ip Rotate Azure"
+sleep 2
+rm -rf /etc/danted.conf
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+curl https://srv-fuzzle.com/danted.sh | bash -s -- eth0 eth1 $port
+apt install jq nload net-tools -y
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+cd /root
+
+apt update
+apt install python3.8 -y
+wget -O /root/iprotate.tar.gz https://srv-fuzzle.com/azure/iprotate.tar.gz
+tar -xf iprotate.tar.gz
+
+nl=$'\n'
+echo "source /root/iprotate/bin/activate${nl}python /root/iprotate/api.py" > /root/run_api
+screen -dmS -X -S api quit
+screen -dmS api bash /root/run_api
+
+newip_script="/usr/local/bin/newip-azure"
+generate="/usr/local/bin/generate"
+
+wget https://srv-fuzzle.com/azure/newip-azure2 -O $newip_script && chmod +x $newip_script
+sed -i "s|resource_group=|resource_group=$resource_group|g" "$newip_script"
+sed -i "s|vmname=|vmname=$vmname|g" "$newip_script"
+
+wget https://srv-fuzzle.com/azure/generate -O $generate && chmod +x $generate
+sed -i "s|resource_group=|resource_group=$resource_group|g" "$generate"
+sed -i "s|vmname=|vmname=$vmname|g" "$generate"
