@@ -116,5 +116,5 @@ az vm nic add -g $resource_group --vm-name $vmname --nics ${basename}_nic1 ${bas
 
 az vm start -g $resource_group -n $vmname --query "null" >/dev/null
 sleep 10
-
+ip_vm=$(az network public-ip show -g $resource_group -n $ip1 --query "ipAddress" -o tsv)
 ssh root@$ip_vm "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/muterbash | bash -s -- --resource_group $resource_group --vmname $vmname --port $port"
