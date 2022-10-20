@@ -50,7 +50,7 @@ echo "Starting Process Setup Ip Rotate Azure"
 sleep 2
 rm -rf /etc/danted.conf
 sudo add-apt-repository ppa:deadsnakes/ppa -y
-curl https://srv-fuzzle.com/danted.sh | bash -s -- eth0 eth1 $port
+curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- eth0 eth1 $port
 apt install jq nload net-tools -y
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
@@ -58,7 +58,7 @@ cd /root
 
 apt update
 apt install python3.8 -y
-wget -O /root/iprotate.tar.gz https://srv-fuzzle.com/azure/iprotate.tar.gz
+wget -O /root/iprotate.tar.gz https://github.com/ilyasbit/all-about-cpu-mining/raw/muter/iprotate.tar.gz
 tar -xf iprotate.tar.gz
 
 nl=$'\n'
@@ -69,11 +69,11 @@ screen -dmS api bash /root/run_api
 newip_script="/usr/local/bin/newip-azure"
 generate="/usr/local/bin/generate"
 
-wget https://srv-fuzzle.com/azure/newip-azure2 -O $newip_script && chmod +x $newip_script
+wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/newip-azure2 -O $newip_script && chmod +x $newip_script
 sed -i "s|resource_group=|resource_group=$resource_group|g" "$newip_script"
 sed -i "s|vmname=|vmname=$vmname|g" "$newip_script"
 
-wget https://srv-fuzzle.com/azure/generate -O $generate && chmod +x $generate
+wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/generate -O $generate && chmod +x $generate
 sed -i "s|resource_group=|resource_group=$resource_group|g" "$generate"
 sed -i "s|vmname=|vmname=$vmname|g" "$generate"
 
