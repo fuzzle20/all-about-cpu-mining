@@ -85,7 +85,7 @@ ssh iprotate@$ip_vm "sudo cp /home/iprotate/.ssh/authorized_keys /root/.ssh/auth
 ssh iprotate@$ip_vm 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config' &>/dev/null &
 sleep 5
 scp -r $HOME/.azure root@$ip_vm:~/ >/dev/null
-az vm stop -g $resource_group -n $vmname --skip-shutdown
+az vm deallocate -g $resource_group -n $vmname --no-wait
 
 #remove old ip from main_nic
 az network nic ip-config update -g $resource_group --name $ipconfig0_name --nic-name $nic_name0 --remove PublicIpAddress --query "[null]" >/dev/null
@@ -115,6 +115,6 @@ az network nic update -g $resource_group -n "${basename}_nic2" --network-securit
 az vm nic add -g $resource_group --vm-name $vmname --nics ${basename}_nic1 ${basename}_nic2 >/dev/null
 
 az vm start -g $resource_group -n $vmname --query "null" >/dev/null
-sleep 5
+sleep 10
 
 ssh root@$ip_vm "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/muterbash | bash -s -- --resource_group $resource_group --vmname $vmname --port $port"
