@@ -1,0 +1,74 @@
+#!/bin/bash
+resource_group=
+vmname=
+datanic=/usr/local/bin/data_nic
+iptables -F
+iptables -A INPUT -p tcp --destination-port 9999 -j DROP
+dante_config="/etc/danted.conf"
+chmod 600 /usr/local/bin/newip-azure
+while IFS= read -r nic; do
+active_eth=$(sed -n '5p' < $dante_config | cut -d " " -f2)
+old_ip=$(curl -s ifconfig.me --interface $active_eth)
+gateway=$(ip route show | grep "dhcp" | cut -d " " -f 3 | head -1)
+privip=$(echo $nic | cut -d " " -f2)
+iponly=$(echo $privip | cut -d "/" -f 1)
+table=$(echo $iponly | tr -d '.')
+eth=$(echo $nic | cut -d " " -f7)
+dyn_nic=$(echo $nic | cut -d " " -f8)
+if [[ "$active_eth" != "$eth" ]]; then
+    sed -i "s|$active_eth|$eth|g" "$dante_config"
+    active_nic=${dyn_nic}
+    oldnic=$(cat $datanic | grep "$active_eth" |  cut -d " " -f8)
+    ipname=$(cat $datanic | grep "$active_eth" |  cut -d " " -f9)
+    newip=$(curl -s ifconfig.me --interface $eth)
+    ipconfig=$(cat $datanic | grep "$active_eth" |  cut -d " " -f10)
+    break
+fi
+done < $datanic
+
+service danted restart
+date=$(date +%m-%d-%T)
+echo "your current IP Address : $old_ip"
+echo "your New IP Address : $newip"
+echo "Please Wait, Preparing your upcoming New IP Address"
+echo "$date|$newip" >> /root/.azure/ip_history_$vmname.txt
+
+rotate(){
+az network nic ip-config update --name $ipconfig --resource-group $resource_group --nic-name $oldnic --remove PublicIpAddress --query "[null]" &>/dev/null &
+pid_remove=$(echo $!)
+while true; do
+ipconfig_status=$(az network nic ip-config show -g $resource_group -n $ipconfig --nic-name $oldnic --query "publicIpAddress")
+if [ -z "$ipconfig_status" ]; then
+kill -9 $pid_remove
+sleep 1
+az network nic ip-config update --name $ipconfig --resource-group $resource_group --nic-name $oldnic --public-ip-address $ipname --query "[null]" &>/dev/null &
+pid_add=$(echo $!)
+break
+fi
+done
+
+#while true; do
+#    prosesip=$(timeout 2 curl -s --connect-timeout 1 --interface $active_eth ifconfig.me);
+#    if [ "$prosesip" == "$old_ip" ]; then
+#        sleep 0.5;
+#    elif [ -z "$prosesip" ]; then
+#        sleep 0.5;
+#    elif [ "$prosesip" != "$old_ip" ]; then
+#        kill -9 $pid_add
+#        break;
+#fi;
+#done
+
+sleep 50
+kill -9 $pid_add
+
+for KILLPID in `ps ax | grep 'azure.cli' | awk ' { print $1;}'`; do
+kill -9 $KILLPID ;
+done
+iptables -A INPUT -p tcp --destination-port 9999 -j ACCEPT
+chmod +x "/usr/local/bin/newip-azure"
+iptables -F
+iptables -A INPUT -p tcp --destination-port 9999 -j ACCEPT
+}
+
+rotate &>/dev/null &

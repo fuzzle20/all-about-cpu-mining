@@ -1,0 +1,75 @@
+#!/bin/bash
+resource_group=
+vmname=
+datanic=/usr/local/bin/data_nic
+netplan apply
+
+if  grep -q "/usr/local/bin/generate" "/etc/crontab" ; then
+         echo '' ;
+else
+         echo '@reboot         root    /usr/local/bin/generate' >> /etc/crontab ;
+fi
+
+
+if [ ! -f /etc/iproute2/rt_tables_backup ];
+    then
+    cp /etc/iproute2/rt_tables /etc/iproute2/rt_tables_backup
+fi
+
+cp /etc/iproute2/rt_tables_backup /etc/iproute2/rt_tables
+
+sleep 10
+
+generate_datanic(){
+    ip addr | grep -e "inet" | grep -v "inet6\|127.0.0.1\|eth0" > $datanic
+    sed -i "s/^    //" $datanic
+}
+
+add_data(){
+    dynamic_nic=$(az network nic list -g $resource_group --query "[?virtualMachine.id]|[?contains(virtualMachine.id,'$vmname')]|[?primary == \`false\`]|[?[ipConfigurations[?primary == \`true\`]]].{name:name, ip:ipConfigurations[0].privateIpAddress, public_ip:ipConfigurations[0].publicIpAddress.id, ipconfig:ipConfigurations[0].name}" --output tsv | sed 's/\t/ /g')
+    while IFS= read -r aznic ; do
+        ip=$(echo $aznic | cut -d " " -f2)
+        nic=$(echo $aznic | cut -d " " -f1)
+        ipconfig=$(echo $aznic | cut -d " " -f4)
+        public_ipaddress=$(echo $aznic | cut -d " " -f3 | rev | cut -d "/" -f1 | rev )
+        sed -i "s|$ip.*|& $nic $public_ipaddress $ipconfig|g" $datanic
+    done <<< "$dynamic_nic"
+}
+
+set_route(){
+    while IFS= read -r nic; do
+        gateway=$(ip route show | grep "dhcp" | cut -d " " -f 3 | head -1)
+        privip=$(echo $nic | cut -d " " -f2)
+        iponly=$(echo $privip | cut -d "/" -f 1)
+        table=$(echo $iponly | tr -d '.')
+        eth=$(echo $nic | cut -d " " -f7)
+        ip rule del from $iponly 2> /dev/null
+        echo $table $eth >> /etc/iproute2/rt_tables
+        ip rule add from $iponly lookup $eth
+        ip route add default via $gateway dev $eth table $eth
+        ip route add default via $gateway dev $eth metric $table
+    done < $datanic
+}
+
+if [ ! -f $datanic ]; then
+    generate_datanic
+    add_data
+
+fi
+
+set_route
+
+while IFS= read -r nic; do
+eth=$(echo $nic | cut -d " " -f7)
+nic_name=$(echo $nic | cut -d " " -f8)
+ipname=$(echo $nic | cut -d " " -f9)
+if ping google.com -c 1 -I $eth > /dev/null; then
+    echo "$eth online, NIC = $nic_name , Ip = $ipname"
+else
+    echo "$eth fail, NIC = $nic_name , Ip = $ipname"
+fi
+
+done < $datanic
+chmod +x /usr/local/bin/newip-azure
+screen -dmS -X -S api quit
+screen -dmS api bash /root/run_api

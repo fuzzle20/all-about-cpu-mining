@@ -78,3 +78,7 @@ sed -i "s|resource_group=|resource_group=$resource_group|g" "$generate"
 sed -i "s|vmname=|vmname=$vmname|g" "$generate"
 
 generate
+ipstatic=$(curl -s ifconfig.me)
+clear
+echo "proxy socks5  = ${ipstatic}:${port}"
+echo "changeip port = ${ipstatic}:9999"
