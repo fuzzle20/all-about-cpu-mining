@@ -99,6 +99,9 @@ groupid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SecurityGroups
 attach_id=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].Attachment.AttachmentId')
 instance_public_ip=$(echo $datainstance | jq -r '.Reservations[].Instances[].PublicIpAddress')
 
+echo "run ssh on instance as ubuntu"
+ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys && echo 'PermitRootLogin prohibit-password' | sudo tee -a /etc/ssh/sshd_config"
+
 #create IAM
 aws iam create-user --user-name $instance_id
 aws iam attach-user-policy --user-name $instance_id --policy-arn arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
@@ -119,12 +122,6 @@ attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id
 echo "#add security group rules"
 #add security group rules
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
-
-#setup on instance
-echo "run ssh on instance as ubuntu"
-ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys && echo 'PermitRootLogin prohibit-password' | sudo tee -a /etc/ssh/sshd_config" &>/dev/null
-echo "sleep for 5 seconds"
-sleep 5
 
 echo "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-instance | bash -s -- --port \"$port\" --instance_id \"$instance_id\" --access_key \"$access_key\" --secret_key \"$secret_key\" --region \"$region\" --nic_static \"$(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId')\"" > setup-${instance_id}.sh
 
