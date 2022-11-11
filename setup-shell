@@ -57,6 +57,14 @@ fi
 chown $USER:$USER $HOME/.ssh/config
 chmod 600 $HOME/.ssh/config
 
+#check if keypair is valid
+if [ ! -f "$keypair" ]; then
+    echo "Keypair file not found"
+    exit 1
+fi
+
+chmod 600 $keypair
+
 #get instance data
 datainstance=$(aws ec2 describe-instances --instance-ids $instance_id --region $region)
 amidesc=$(aws ec2 describe-images --image-ids $(echo $datainstance | jq -r '.Reservations[].Instances[].ImageId') --region $region | jq -r '.Images[].Description')
@@ -69,7 +77,7 @@ else
     exit 1
 fi
 
-#get nic instance
+#get nic details
 nicinstance=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].NetworkInterfaceId')
 subnetid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SubnetId')
 vpcid=$(echo $datainstance | jq -r '.Reservations[].Instances[].VpcId')
@@ -77,10 +85,16 @@ groupid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SecurityGroups
 attach_id=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].Attachment.AttachmentId')
 instance_public_ip=$(echo $datainstance | jq -r '.Reservations[].Instances[].PublicIpAddress')
 
+#check if keypair is connected to instance_public_ip
+if [ -z "$(ssh -i $keypair ubuntu@$instance_public_ip echo 'ok')" ]; then
+    echo "Keypair is uncorrect"
+    exit 1
+fi
+
 #create IAM
-aws iam create-user --user-name muter
-aws iam attach-user-policy --user-name muter --policy-arn arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
-generatedaccesskey=$(aws iam create-access-key --user-name muter)
+aws iam create-user --user-name $instance_id
+aws iam attach-user-policy --user-name $instance_id --policy-arn arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+generatedaccesskey=$(aws iam create-access-key --user-name $instance_id)
 access_key=$(echo $generatedaccesskey | jq -r '.AccessKey.AccessKeyId')
 secret_key=$(echo $generatedaccesskey | jq -r '.AccessKey.SecretAccessKey')
 
