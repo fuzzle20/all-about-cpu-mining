@@ -52,6 +52,7 @@ do
 done
 
 if [ ! -f "$HOME/.ssh/config" ]; then
+mkdir -p $HOME/.ssh/ && touch $HOME/.ssh/config
 cat >> $HOME/.ssh/config <<EOL
 Host *
         StrictHostKeyChecking no
