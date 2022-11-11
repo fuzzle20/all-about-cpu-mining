@@ -72,13 +72,22 @@ chmod 600 $keypair
 
 #get instance data
 datainstance=$(aws ec2 describe-instances --instance-ids $instance_id --region $region)
+key_fingerprint=$(aws ec2 describe-key-pairs --key-name $(echo $datainstance | jq -r '.Reservations[].Instances[].KeyName') --region $region | jq -r '.KeyPairs[].KeyFingerprint' | cut -d "=" -f1)
 amidesc=$(aws ec2 describe-images --image-ids $(echo $datainstance | jq -r '.Reservations[].Instances[].ImageId') --region $region | jq -r '.Images[].Description')
-
+keypair_fingerprint=$(ssh-keygen -l -f $keypair | cut -d " " -f2 | cut -d "=" -f1 | cut -d ":" -f2)
 #check if amidesc contains "Ubuntu, 20.04 LTS, amd64 focal"
 if [[ $amidesc == *"Ubuntu, 20.04 LTS, amd64 focal"* ]]; then
     echo "Ubuntu 20.04 LTS detected"
 else
     echo "Ubuntu 20.04 LTS not detected. Please Check your parameter Tutorial"
+    exit 1
+fi
+
+#check if keypair_fingerprint is equal to key_fingerprint
+if [ "$keypair_fingerprint" == "$key_fingerprint" ]; then
+    echo "Keypair fingerprint is valid"
+else
+    echo "Keypair fingerprint is not valid"
     exit 1
 fi
 
@@ -89,12 +98,6 @@ vpcid=$(echo $datainstance | jq -r '.Reservations[].Instances[].VpcId')
 groupid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SecurityGroups[].GroupId')
 attach_id=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].Attachment.AttachmentId')
 instance_public_ip=$(echo $datainstance | jq -r '.Reservations[].Instances[].PublicIpAddress')
-
-#check if keypair is connected to instance_public_ip
-if [ -z "$(ssh -i $keypair ubuntu@$instance_public_ip echo 'ok')" ]; then
-    echo "Keypair is uncorrect"
-    exit 1
-fi
 
 #create IAM
 aws iam create-user --user-name $instance_id
