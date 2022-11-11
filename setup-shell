@@ -3,18 +3,18 @@
 help()
 {
     echo "
-Usage: iprotate_aws.sh
+Usage: setup-shell
                [ -p | --port           ]
                [ -d | --instance_id    ]
                [ -k | --keypair        ]
+               [ -r | --region         ]
                [ -h | --help           ]"
     exit 2
 }
 
-
 SHORT=r:,v:,p:,h
-LONG=port:,instance_id:,keypair:,help
-OPTS=$(getopt --alternative --name iprotate_azure --options $SHORT --longoptions $LONG -- "$@")
+LONG=port:,instance_id:,keypair:,region:,help
+OPTS=$(getopt --alternative --name setup_aws --options $SHORT --longoptions $LONG -- "$@")
 
 eval set -- "$OPTS"
 
@@ -33,6 +33,10 @@ do
       keypair="$2"
       shift 2
       ;;
+    -r | --region )
+      region="$2"
+      shift 2
+      ;;
     -h | --help)
       help
       ;;
@@ -42,6 +46,7 @@ do
       ;;
     *)
       echo "Unexpected option: $1"
+      exit 1
       ;;
   esac
 done

@@ -1,0 +1,18 @@
+bikin vm di azure 
+vm size Standard_B2ms
+os ubuntu 20.04
+
+buka azure cloud shell
+
+ketik :
+az login
+
+copy code & buka url dari cloudshell
+masukin code & pilih akun azure
+
+time curl -s https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/mutershell | bash -s -- --resource_group "puter" --vmname "vm1" --port "9952"
+
+time curl -s https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/mutershell | bash -s -- --resource_group "puter" --vmname "vm2" --port "9952"
+
+
+setelah selsai setup bisa di close cloudshell  nya 

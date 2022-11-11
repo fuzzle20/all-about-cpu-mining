@@ -1,0 +1,16 @@
+pasang keypair di aws ec2
+bikin instance di aws ec2:
+
+- instance type t2micro / t3.micro yang penting free trial
+- os ubuntu 20.04 lts
+
+catet instance id & region
+contoh
+
+buka aws cloudshell
+
+
+time curl -s https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-shell | bash -s -- --instance_id "instance-id" --region "region" --keypair "file_key" --port "9952"
+
+
+setelah selsai setup bisa di close cloudshell  nya 
