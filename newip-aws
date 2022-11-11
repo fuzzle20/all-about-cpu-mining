@@ -1,0 +1,63 @@
+#!/bin/bash
+
+ip_static=
+nic_static=
+nic_dynamic=
+instance_id=
+allocation_id=
+
+
+iptables -F
+iptables -A INPUT -p tcp --destination-port 9999 -j DROP
+service danted stop 
+oldip=$(aws ec2 describe-instances --filters "Name=instance-id,Values=$instance_id" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+echo "Your current IP Address: $oldip"
+
+sleep 1
+
+while :
+do
+        attach_id=$(aws ec2 describe-network-interfaces --query "NetworkInterfaces[?Description== 'static'].Attachment.AttachmentId | [0]" | jq -cr .)
+        if [ "$attach_id" != "null" ]; then aws ec2 detach-network-interface --attachment-id $attach_id > /dev/null; else break; fi
+        sleep 3
+done
+
+sleep 1
+
+while :
+do
+        ip_stat=$(aws ec2 describe-addresses --public-ips $ip_static | jq '.Addresses[].AssociationId')
+        if [ "$ip_stat" != "null" ]; then aws ec2 disassociate-address --public-ip $ip_static > /dev/null; else break; fi
+        sleep 1
+done
+
+sleep 1
+
+aws ec2 associate-address --allocation-id $allocation_id --network-interface-id $nic_dynamic > /dev/null
+sleep 1
+
+while :
+do
+        ip_stat=$(aws ec2 describe-addresses --public-ips $ip_static | jq '.Addresses[].AssociationId')
+        if [ "$ip_stat" != "null" ]; then aws ec2 disassociate-address --public-ip $ip_static > /dev/null; else break; fi
+        sleep 1
+done
+
+while :
+do
+        nic_stat=$(aws ec2 describe-network-interfaces --query "NetworkInterfaces[?Description== 'static'].Attachment.DeviceIndex | [0]" | jq -cr .)
+        if [ "$nic_stat" == "null" ]; then aws ec2 attach-network-interface --network-interface-id $nic_static --instance-id $instance_id --device-index 1 > /dev/null; else break; fi
+        sleep 1
+done
+
+
+sleep 1
+aws ec2 associate-address --allocation-id $allocation_id --network-interface-id $nic_static > /dev/null
+
+newip=$(aws ec2 describe-instances --filters "Name=instance-id,Values=$instance_id" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text)
+echo "Your New IP Address: $newip"
+echo "Your New IP Address: $newip" >> /root/.aws/ip_history.txt
+sleep 5
+service danted start
+iptables -F
+iptables -A INPUT -p tcp --destination-port 9999 -j ACCEPT

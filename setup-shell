@@ -1,0 +1,104 @@
+#!/bin/bash
+
+help()
+{
+    echo "
+Usage: iprotate_aws.sh
+               [ -p | --port           ]
+               [ -d | --instance_id    ]
+               [ -k | --keypair        ]
+               [ -h | --help           ]"
+    exit 2
+}
+
+
+SHORT=r:,v:,p:,h
+LONG=port:,instance_id:,keypair:,help
+OPTS=$(getopt --alternative --name iprotate_azure --options $SHORT --longoptions $LONG -- "$@")
+
+eval set -- "$OPTS"
+
+while :
+do
+  case "$1" in
+    -p | --port )
+      port="$2"
+      shift 2
+      ;;
+    -d | --instance_id )
+      instance_id="$2"
+      shift 2
+      ;;
+    -k | --keypair )
+      keypair="$2"
+      shift 2
+      ;;
+    -h | --help)
+      help
+      ;;
+    --)
+      shift;
+      break
+      ;;
+    *)
+      echo "Unexpected option: $1"
+      ;;
+  esac
+done
+
+if [ ! -f "$HOME/.ssh/config" ]; then
+cat >> $HOME/.ssh/config <<EOL
+Host *
+        StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+EOL
+fi
+
+chown $USER:$USER $HOME/.ssh/config
+chmod 600 $HOME/.ssh/config
+
+#get instance data
+datainstance=$(aws ec2 describe-instances --instance-ids $instance_id --region $region)
+amidesc=$(aws ec2 describe-images --image-ids $(echo $datainstance | jq -r '.Reservations[].Instances[].ImageId') --region $region | jq -r '.Images[].Description')
+
+#check if amidesc contains "Ubuntu, 20.04 LTS, amd64 focal"
+if [[ $amidesc == *"Ubuntu, 20.04 LTS, amd64 focal"* ]]; then
+    echo "Ubuntu 20.04 LTS detected"
+else
+    echo "Ubuntu 20.04 LTS not detected. Please Check your parameter Tutorial"
+    exit 1
+fi
+
+#get nic instance
+nicinstance=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].NetworkInterfaceId')
+subnetid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SubnetId')
+vpcid=$(echo $datainstance | jq -r '.Reservations[].Instances[].VpcId')
+groupid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SecurityGroups[].GroupId')
+attach_id=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].Attachment.AttachmentId')
+instance_public_ip=$(echo $datainstance | jq -r '.Reservations[].Instances[].PublicIpAddress')
+
+#create IAM
+aws iam create-user --user-name muter
+aws iam attach-user-policy --user-name muter --policy-arn arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+generatedaccesskey=$(aws iam create-access-key --user-name muter)
+access_key=$(echo $generatedaccesskey | jq -r '.AccessKey.AccessKeyId')
+secret_key=$(echo $generatedaccesskey | jq -r '.AccessKey.SecretAccessKey')
+
+#create elastic ip
+elasticip=$(aws ec2 allocate-address --domain vpc --region $region)
+
+#create network interface
+networkinterface=$(aws ec2 create-network-interface --subnet-id $subnetid --description "static" --groups $groupid --region $region)
+
+#associate elastic ip
+associateelasticip=$(aws ec2 associate-address --allocation-id $(echo $elasticip | jq -r '.AllocationId') --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --private-ip-address $(echo $networkinterface | jq -r '.NetworkInterface.PrivateIpAddress') --region $region)
+#attach network interface
+attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --instance-id $instance_id --device-index 1 --region $region)
+
+#add security group rules
+aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
+
+#setup on instance
+ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys" &>/dev/null &
+ssh ubuntu@$instance_public_ip -i $keypair 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config' &>/dev/null &
+ssh root@$instance_public_ip -i $keypair "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-instance | bash -s -- --port $port --instance_id $instance_id --access_key $access_key --secret_key $secret_key --region $region --nic_static $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId')"

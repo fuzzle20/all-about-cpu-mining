@@ -1,0 +1,134 @@
+#!/bin/bash
+help()
+{
+    echo "
+Usage: iprotate_aws.sh
+               [ -p | --port           ]
+               [ -d | --instance_id    ]
+               [ -a | --access_key     ]
+               [ -s | --secret_key     ]
+               [ -r | --region         ]
+               [ -n | --nic_static     ]
+               [ -h | --help           ]"
+    exit 2
+}
+
+SHORT=p:,i:,a:,s:,r:,h
+LONG=port:,instance_id:,access_key:,secret_key:,region:,nic_static:,help
+OPTS=$(getopt --alternative --name iprotate_aws --options $SHORT --longoptions $LONG -- "$@")
+
+eval set -- "$OPTS"
+
+while :
+do
+  case "$1" in
+    -p | --port )
+      port="$2"
+      shift 2
+      ;;
+    -d | --instance_id )
+      instance_id="$2"
+      shift 2
+      ;;
+    -a | --access_key )
+      access_key="$2"
+      shift 2
+      ;;
+    -s | --secret_key )
+      secret_key="$2"
+      shift 2
+	  ;;
+    -r | --region )
+      region="$2"
+      shift 2
+      ;;
+    -h | --help )
+      help
+      ;;
+    --)
+      shift;
+      break
+      ;;
+    *)
+      echo "Unexpected option: $1"
+      ;;
+  esac
+done
+
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- eth1 eth0 $port
+apt install jq nload net-tools unzip -y
+
+apt update -y
+apt install python3.8 -y
+wget -O /root/iprotate.tar.gz https://github.com/ilyasbit/all-about-cpu-mining/raw/muter/iprotateaws.tar.gz
+tar -xvf /root/iprotate.tar.gz -C /root/
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install && rm -rf awscliv2.zip aws
+
+mkdir /root/.aws/
+touch /root/.aws/credentials
+touch /root/.aws/config
+aws_creds="[default]\n"
+aws_creds+="aws_access_key_id = $access_key\n"
+aws_creds+="aws_secret_access_key = $secret_key\n"
+
+aws_config="[default]\n"
+aws_config+="region = $region\n"
+aws_config+="output = json\n"
+
+printf "$aws_config" > /root/.aws/config
+printf "$aws_creds" > /root/.aws/credentials
+
+cd /root
+
+iprange=$(ip route show | grep "/" | cut -d " " -f 1 | cut -d "/" -f 2)
+gateway=$(ip route show | grep "default" | cut -d " " -f 3)
+static_eth=$(ip link | grep "DOWN" | rev | cut -d ":" -f 2 | rev | xargs)
+dynamic_eth=$(ip link | grep "state UP mode DEFAULT" | rev | cut -d ":" -f 2 | rev | xargs)
+ip link set $static_eth up 
+
+newip_script="/usr/bin/newip-aws"
+
+wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/newip-aws -O $newip_script && chmod +x $newip_script
+
+if  grep -q "run_api" "/etc/crontab" ; then
+         echo 'crontab exist' ;
+else
+         echo '@reboot         root    screen -dmS api bash /root/run_api' >> /etc/crontab ;
+fi
+
+datainstance=$(aws ec2 describe-instances --instance-id $instance_id --region $region)
+nic_detail=$(aws ec2 describe-network-interfaces --network-interface-id $nic_static --region $region)
+ip_static=$(echo $nic_detail | jq -r '.NetworkInterfaces[0].Association.PublicIp')
+privateip=$(echo $nic_detail | jq -r '.NetworkInterfaces[0].PrivateIpAddress')
+nic_dynamic=$(echo $datainstance | jq -r '.Reservations[0].Instances[0].NetworkInterfaces[].NetworkInterfaceId' | grep -v $nic_static)
+allocation_id=$(echo $nic_detail | jq -r '.NetworkInterfaces[0].Association.AllocationId')
+
+
+sed -i "s|ip_static=|ip_static=$ip_static|g" "$newip_script"
+sed -i "s|nic_static=|nic_static=$nic_static|g" "$newip_script"
+sed -i "s|nic_dynamic=|nic_dynamic=$nic_dynamic|g" "$newip_script"
+sed -i "s|instance_id=|instance_id=$instance_id|g" "$newip_script"
+sed -i "s|allocation_id=|allocation_id=$allocation_id|g" "$newip_script"
+
+wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/00-install-config.yaml -O /etc/netplan/00-install-config.yaml
+
+sed -i "s|ens6|$static_eth|g" "/etc/netplan/00-install-config.yaml"
+sed -i "s|subnet|"$privateip/$iprange"|g" "/etc/netplan/00-install-config.yaml"
+sed -i "s|ip|$privateip|g" "/etc/netplan/00-install-config.yaml"
+sed -i "s|gateway|$gateway|g" "/etc/netplan/00-install-config.yaml"
+
+netplan apply
+service danted restart
+
+nl=$'\n'
+echo "source /root/iprotate/bin/activate${nl}python /root/iprotate/api.py" > /root/run_api
+screen -dmS -X -S api quit
+screen -dmS api bash /root/run_api
+
+clear
+echo "proxy socks5  = ${ip_static}:${port}"
+echo "changeip port = ${ip_static}:9999"
