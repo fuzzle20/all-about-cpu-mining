@@ -61,17 +61,17 @@ do
 done
 
 sudo add-apt-repository ppa:deadsnakes/ppa -y
-curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- eth1 eth0 $port
+curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- eth1 eth0 $port > /dev/null
 apt install jq nload net-tools unzip -y
 
 apt update -y
 apt install python3.8 -y
 wget -O /root/iprotate.tar.gz https://github.com/ilyasbit/all-about-cpu-mining/raw/muter/iprotateaws.tar.gz
-tar -xvf /root/iprotate.tar.gz -C /root/
+tar -xvf /root/iprotate.tar.gz -C /root/ && rm -rf /root/iprotate.tar.gz > /dev/null
 
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install && rm -rf awscliv2.zip aws
+curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip > /dev/null
+sudo ./aws/install && rm -rf awscliv2.zip aws > /dev/null
 
 mkdir /root/.aws/
 touch /root/.aws/credentials
@@ -95,14 +95,14 @@ static_eth=$(ip link | grep "DOWN" | rev | cut -d ":" -f 2 | rev | xargs)
 dynamic_eth=$(ip link | grep "state UP mode DEFAULT" | rev | cut -d ":" -f 2 | rev | xargs)
 ip link set $static_eth up 
 
-newip_script="/usr/bin/newip-aws"
+newip_script="/usr/local/bin/newip-aws"
 
-wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/newip-aws -O $newip_script && chmod +x $newip_script
+wget -q https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/newip-aws -O $newip_script && chmod +x $newip_script
 
 if  grep -q "run_api" "/etc/crontab" ; then
          echo 'crontab exist' ;
 else
-         echo '@reboot         root    screen -dmS api bash /root/run_api' >> /etc/crontab ;
+         echo '@reboot         root    run_api' >> /etc/crontab ;
 fi
 
 datainstance=$(aws ec2 describe-instances --instance-id $instance_id --region $region)
@@ -119,20 +119,30 @@ sed -i "s|nic_dynamic=|nic_dynamic=$nic_dynamic|g" "$newip_script"
 sed -i "s|instance_id=|instance_id=$instance_id|g" "$newip_script"
 sed -i "s|allocation_id=|allocation_id=$allocation_id|g" "$newip_script"
 
-wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/00-install-config.yaml -O /etc/netplan/00-install-config.yaml
+netplanconfig="/etc/netplan/00-install-config.yaml"
 
-sed -i "s|ens6|$static_eth|g" "/etc/netplan/00-install-config.yaml"
-sed -i "s|subnet|"$privateip/$iprange"|g" "/etc/netplan/00-install-config.yaml"
-sed -i "s|ip|$privateip|g" "/etc/netplan/00-install-config.yaml"
-sed -i "s|gateway|$gateway|g" "/etc/netplan/00-install-config.yaml"
+wget -q https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/00-install-config.yaml -O $netplanconfig
+
+sed -i "s|ens6|$static_eth|g" "$netplanconfig"
+sed -i "s|subnet|"$privateip/$iprange"|g" "$netplanconfig"
+sed -i "s|ip|$privateip|g" "$netplanconfig"
+sed -i "s|gateway|$gateway|g" "$netplanconfig"
 
 netplan apply
 service danted restart
 
-nl=$'\n'
-echo "source /root/iprotate/bin/activate${nl}python /root/iprotate/api.py" > /root/run_api
+cat > /usr/local/bin/run_api <<EOL
+service danted restart
+iptables -F
+iptables -A INPUT -p tcp --destination-port 9999 -j ACCEPT
+source /root/iprotate/bin/activate
 screen -dmS -X -S api quit
-screen -dmS api bash /root/run_api
+screen -dmS api python /root/iprotate/api.py
+EOL
+
+chmod +x /usr/local/bin/run_api
+
+run_api
 
 #clear ram 
 sync; echo 3 > /proc/sys/vm/drop_caches 

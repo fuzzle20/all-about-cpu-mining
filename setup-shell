@@ -106,7 +106,15 @@ ssh -i $keypair ubuntu@$instance_public_ip 'bash -s' < '/tmp/allowssh.sh'
 
 #create IAM
 aws iam create-user --user-name $instance_id
-aws iam attach-user-policy --user-name $instance_id --policy-arn arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+aws iam attach-user-policy --user-name $instance_id --policy-arn arn:aws:iam::aws:policy/AmazonEC2FullAccess
+#list current access keys on user
+accesskeys=$(aws iam list-access-keys --user-name $instance_id | jq -r '.AccessKeyMetadata[].AccessKeyId')
+#delete existing access key on user
+for key in ${accesskeys[@]}; do
+    aws iam delete-access-key --user-name $instance_id --access-key-id $key
+done
+
+#generate new access key
 generatedaccesskey=$(aws iam create-access-key --user-name $instance_id)
 access_key=$(echo $generatedaccesskey | jq -r '.AccessKey.AccessKeyId')
 secret_key=$(echo $generatedaccesskey | jq -r '.AccessKey.SecretAccessKey')
@@ -119,9 +127,10 @@ networkinterface=$(aws ec2 create-network-interface --subnet-id $subnetid --desc
 
 #associate elastic ip
 associateelasticip=$(aws ec2 associate-address --allocation-id $(echo $elasticip | jq -r '.AllocationId') --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --private-ip-address $(echo $networkinterface | jq -r '.NetworkInterface.PrivateIpAddress') --region $region)
+
 #attach network interface
 attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --instance-id $instance_id --device-index 1 --region $region)
-echo "#add security group rules"
+
 #add security group rules
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
 
