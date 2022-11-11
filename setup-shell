@@ -65,7 +65,7 @@ chmod 600 $HOME/.ssh/config
 #check if keypair is valid
 if [ ! -f "$keypair" ]; then
     echo "Keypair file not found"
-    exit 1
+    exit 0
 fi
 
 chmod 600 $keypair
@@ -80,7 +80,7 @@ if [[ $amidesc == *"Ubuntu, 20.04 LTS, amd64 focal"* ]]; then
     echo "Ubuntu 20.04 LTS detected"
 else
     echo "Ubuntu 20.04 LTS not detected. Please Check your parameter Tutorial"
-    exit 1
+    exit 0
 fi
 
 #check if keypair_fingerprint is equal to key_fingerprint
@@ -88,7 +88,7 @@ if [ "$keypair_fingerprint" == "$key_fingerprint" ]; then
     echo "Keypair fingerprint is valid"
 else
     echo "Keypair fingerprint is not valid"
-    exit 1
+    exit 0
 fi
 
 #get nic details
@@ -121,8 +121,9 @@ attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
 
 #setup on instance
-ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys"
-ssh ubuntu@$instance_public_ip -i $keypair 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config'
+ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys && echo 'PermitRootLogin prohibit-password' | sudo tee -a /etc/ssh/sshd_config" &>/dev/null
+echo "sleep for 5 seconds"
+sleep 5
 
 echo "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-instance | bash -s -- --port \"$port\" --instance_id \"$instance_id\" --access_key \"$access_key\" --secret_key \"$secret_key\" --region \"$region\" --nic_static \"$(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId')\"" > setup-${instance_id}.sh
 
