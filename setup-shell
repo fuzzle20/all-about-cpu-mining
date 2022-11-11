@@ -121,6 +121,7 @@ attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
 
 #setup on instance
+echo "run ssh on instance as ubuntu"
 ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys && echo 'PermitRootLogin prohibit-password' | sudo tee -a /etc/ssh/sshd_config" &>/dev/null
 echo "sleep for 5 seconds"
 sleep 5
