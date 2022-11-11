@@ -134,6 +134,8 @@ echo "source /root/iprotate/bin/activate${nl}python /root/iprotate/api.py" > /ro
 screen -dmS -X -S api quit
 screen -dmS api bash /root/run_api
 
-clear
+#clear ram 
+sync; echo 3 > /proc/sys/vm/drop_caches 
+
 echo "proxy socks5  = ${ip_static}:${port}"
 echo "changeip port = ${ip_static}:9999"
