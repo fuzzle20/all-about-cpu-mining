@@ -12,8 +12,8 @@ buka aws cloudshell
 
 time curl -s https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-shell | bash -s -- --instance_id "instance_id" --region "region" --keypair "filekey" --port "9952"
 
-
+contoh : 
 time curl -s https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-shell | bash -s -- --instance_id "i-05322adcaa8e1fb4d" --region "ap-southeast-1" --keypair "aws-sg" --port "9952"
 
 
-setelah selsai setup bisa di close cloudshell  nya 
+setelah selsai setup bisa di close cloudshell nya 
