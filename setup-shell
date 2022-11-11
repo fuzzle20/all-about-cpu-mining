@@ -121,6 +121,6 @@ attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
 
 #setup on instance
-ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys" &>/dev/null &
-ssh ubuntu@$instance_public_ip -i $keypair 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config' &>/dev/null &
+ssh ubuntu@$instance_public_ip -i $keypair "sudo cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/authorized_keys"
+ssh ubuntu@$instance_public_ip -i $keypair 'sudo echo "PermitRootLogin prohibit-password" | sudo tee -a /etc/ssh/sshd_config'
 ssh root@$instance_public_ip -i $keypair "curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/setup-instance | bash -s -- --port $port --instance_id $instance_id --access_key $access_key --secret_key $secret_key --region $region --nic_static $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId')"
