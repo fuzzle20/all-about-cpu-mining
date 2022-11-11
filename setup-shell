@@ -73,22 +73,13 @@ chmod 600 $keypair
 
 #get instance data
 datainstance=$(aws ec2 describe-instances --instance-ids $instance_id --region $region)
-key_fingerprint=$(aws ec2 describe-key-pairs --key-name $(echo $datainstance | jq -r '.Reservations[].Instances[].KeyName') --region $region | jq -r '.KeyPairs[].KeyFingerprint' | cut -d "=" -f1)
 amidesc=$(aws ec2 describe-images --image-ids $(echo $datainstance | jq -r '.Reservations[].Instances[].ImageId') --region $region | jq -r '.Images[].Description')
-keypair_fingerprint=$(ssh-keygen -l -f $keypair | cut -d " " -f2 | cut -d "=" -f1 | cut -d ":" -f2)
+
 #check if amidesc contains "Ubuntu, 20.04 LTS, amd64 focal"
 if [[ $amidesc == *"Ubuntu, 20.04 LTS, amd64 focal"* ]]; then
     echo "Ubuntu 20.04 LTS detected"
 else
     echo "Ubuntu 20.04 LTS not detected. Please Check your parameter Tutorial"
-    exit 0
-fi
-
-#check if keypair_fingerprint is equal to key_fingerprint
-if [ "$keypair_fingerprint" == "$key_fingerprint" ]; then
-    echo "Keypair fingerprint is valid"
-else
-    echo "Keypair fingerprint is not valid"
     exit 0
 fi
 
@@ -99,6 +90,16 @@ vpcid=$(echo $datainstance | jq -r '.Reservations[].Instances[].VpcId')
 groupid=$(echo $datainstance | jq -r '.Reservations[].Instances[].SecurityGroups[].GroupId')
 attach_id=$(echo $datainstance | jq -r '.Reservations[].Instances[].NetworkInterfaces[].Attachment.AttachmentId')
 instance_public_ip=$(echo $datainstance | jq -r '.Reservations[].Instances[].PublicIpAddress')
+
+#check if keypair_fingerprint is equal to key_fingerprint
+touch /tmp/test
+scp -i $keypair /tmp/test ubuntu@$instance_public_ip:/tmp/test
+if [ $? -ne 0 ]; then
+    echo "Keypair fingerprint is not valid"
+    exit 0
+else
+    echo "Keypair fingerprint is valid"
+fi
 
 wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/allowssh.sh -O /tmp/allowssh.sh
 
