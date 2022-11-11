@@ -116,7 +116,7 @@ networkinterface=$(aws ec2 create-network-interface --subnet-id $subnetid --desc
 associateelasticip=$(aws ec2 associate-address --allocation-id $(echo $elasticip | jq -r '.AllocationId') --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --private-ip-address $(echo $networkinterface | jq -r '.NetworkInterface.PrivateIpAddress') --region $region)
 #attach network interface
 attachnetworkinterface=$(aws ec2 attach-network-interface --network-interface-id $(echo $networkinterface | jq -r '.NetworkInterface.NetworkInterfaceId') --instance-id $instance_id --device-index 1 --region $region)
-
+echo "#add security group rules"
 #add security group rules
 aws ec2 authorize-security-group-ingress --group-id $groupid --protocol all --cidr 0.0.0.0/0 --region $region
 
