@@ -61,10 +61,10 @@ do
 done
 
 sudo add-apt-repository ppa:deadsnakes/ppa -y
-curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- eth1 eth0 $port > /dev/null
+apt update -y
 apt install jq nload net-tools unzip -y
 
-apt update -y
+
 apt install python3.8 -y
 wget -O /root/iprotate.tar.gz https://github.com/ilyasbit/all-about-cpu-mining/raw/muter/iprotateaws.tar.gz
 tar -xvf /root/iprotate.tar.gz -C /root/ && rm -rf /root/iprotate.tar.gz > /dev/null
@@ -127,6 +127,8 @@ sed -i "s|ens6|$static_eth|g" "$netplanconfig"
 sed -i "s|subnet|"$privateip/$iprange"|g" "$netplanconfig"
 sed -i "s|ip|$privateip|g" "$netplanconfig"
 sed -i "s|gateway|$gateway|g" "$netplanconfig"
+
+curl https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/danted.sh | bash -s -- $static_eth $dynamic_eth $port > /dev/null
 
 netplan apply
 service danted restart
