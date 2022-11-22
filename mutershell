@@ -42,6 +42,7 @@ do
       ;;
     *)
       echo "Unexpected option: $1"
+      help
       ;;
   esac
 done
