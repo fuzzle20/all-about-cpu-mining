@@ -68,7 +68,7 @@ fi
 
 az vm user update -u iprotate --ssh-key-value "$(< ~/.ssh/id_rsa.pub)" -g $resource_group -n $vmname >/dev/null
 
-ipconfig0=$(az network nic list -g $resource_group --query "[?virtualMachine.id]|[?contains(virtualMachine.id,'$vmname')]|[?primary == \`true\`]|[?[ipConfigurations[?primary == \`true\`]]].{name:name, ip:ipConfigurations[0].privateIpAddress, public_ip:ipConfigurations[0].publicIpAddress.id, ipconfig:ipConfigurations[0].name, location:location, vnet_id:ipConfigurations[0].subnet.id}")
+ipconfig0=$(az network nic list -g $resource_group --query "[?virtualMachine.id]|[?contains(virtualMachine.id,'$vmname')]|[?primary == \`true\`]|[?[ipConfigurations[?primary == \`true\`]]].{name:name, ip:ipConfigurations[0].privateIpAddress, public_ip:ipConfigurations[0].publicIPAddress.id, ipconfig:ipConfigurations[0].name, location:location, vnet_id:ipConfigurations[0].subnet.id}")
 
 basename="${vmname}_$(echo $RANDOM | md5sum | head -c 2)"
 ip1="${basename}_ip0"
