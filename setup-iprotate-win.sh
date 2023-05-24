@@ -57,6 +57,34 @@ do
     esac
 done
 
+# Check if AWS CLI is installed
+if ! which aws >/dev/null; then
+    echo "AWS CLI is not installed. Please install it and try again."
+    return 1
+fi
+
+# Check if jq is installed
+if ! which jq >/dev/null; then
+    echo "jq is not installed. Please install it and try again."
+    return 1
+fi
+
+# Check if wget is installed
+if ! which wget >/dev/null; then
+    echo "wget is not installed. Please install it and try again."
+    return 1
+fi
+
+# Check if ssh is installed
+if ! which ssh >/dev/null; then
+    echo "ssh is not installed. Please install it and try again."
+    return 1
+fi
+
+# All required tools are installed, continue with the rest of the script
+echo "All required tools are installed. Continuing with the rest of the script..."
+
+
 if [ ! -f "$HOME/.ssh/config" ]; then
     mkdir -p $HOME/.ssh/ && touch $HOME/.ssh/config
 cat >> $HOME/.ssh/config <<EOL
@@ -91,6 +119,12 @@ if [[ -z $instance_id ]]; then
     return 0
 fi
 
+fulladmin_check=$(aws sts get-caller-identity | jq ".Arn" | grep "fulladmin" | wc -l)
+
+if [[ $fulladmin_check -eq 0 ]]; then
+    echo "aws credentials does not have fulladmin policies ! setup exited"
+    return 0
+fi
 
 export AWS_PROFILE=$aws_profile
 
