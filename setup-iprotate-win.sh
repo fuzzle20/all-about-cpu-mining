@@ -3,14 +3,14 @@
 help()
 {
     echo "
-Usage: setup-shell
+Usage: setup-iprotate-win.sh
                [ -p | --port           ]
                [ -a | --aws_profile    ]
                [ -d | --instance_id    ]
                [ -k | --keypair        ]
                [ -r | --region         ]
     [ -h | --help           ]"
-    exit 2
+    return 2
 }
 
 SHORT=p:,a:,d:,k:,r:,h
@@ -52,7 +52,7 @@ do
         ;;
         *)
             echo "Unexpected option: $1"
-            exit 1
+            return 1
         ;;
     esac
 done
@@ -68,27 +68,27 @@ fi
 
 if [[ -z $port ]]; then
     echo "port is set ! setup exited"
-    exit 0
+    return 0
 fi
 
 if [[ -z $aws_profile ]]; then
     echo "aws profile is not set ! setup exited"
-    exit 0
+    return 0
 fi
 
 if [[ -z $keypair ]]; then
     echo "keypair is not set ! setup exited"
-    exit 0
+    return 0
 fi
 
 if [[ -z $region ]]; then
     echo "region profile is not set ! setup exited"
-    exit 0
+    return 0
 fi
 
 if [[ -z $instance_id ]]; then
     echo "instance_id is not set ! setup exited"
-    exit 0
+    return 0
 fi
 
 
@@ -100,7 +100,7 @@ chmod 600 $HOME/.ssh/config
 #check if keypair is valid
 if [ ! -f "$keypair" ]; then
     echo "Keypair file not found"
-    exit 0
+    return 0
 fi
 
 chmod 600 $keypair
@@ -114,7 +114,7 @@ if [[ $amidesc == *"Ubuntu, 20.04 LTS, amd64 focal"* ]]; then
     echo "Ubuntu 20.04 LTS detected"
 else
     echo "Ubuntu 20.04 LTS not detected. Please Check your parameter Tutorial"
-    exit 0
+    return 0
 fi
 
 #get nic details
@@ -130,9 +130,9 @@ touch /tmp/test
 scp -i $keypair /tmp/test ubuntu@$instance_public_ip:/tmp/test
 if [ $? -ne 0 ]; then
     echo "Keypair fingerprint is not valid"
-    exit 0
+    return 0
 else
-    echo "Keypair fingerprint is valid"
+    return "Keypair fingerprint is valid"
 fi
 
 wget https://raw.githubusercontent.com/ilyasbit/all-about-cpu-mining/muter/allowssh.sh -O /tmp/allowssh.sh
