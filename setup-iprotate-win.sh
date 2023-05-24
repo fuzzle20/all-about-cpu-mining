@@ -9,62 +9,89 @@ Usage: setup-shell
                [ -d | --instance_id    ]
                [ -k | --keypair        ]
                [ -r | --region         ]
-               [ -h | --help           ]"
+    [ -h | --help           ]"
     exit 2
 }
 
 SHORT=p:,a:,d:,k:,r:,h
-LONG=port:,aws_profile;,instance_id:,keypair:,region:,help
+LONG=port:,aws_profile:,instance_id:,keypair:,region:,help
 OPTS=$(getopt --alternative --name setup_aws --options $SHORT --longoptions $LONG -- "$@")
 
 eval set -- "$OPTS"
 
 while :
 do
-  case "$1" in
-
-    -p | --port )
-      port="$2"
-      shift 2
-      ;;
-	  -a | --aws_profile )
-	    aws_profile="$2"
-	    shift 2
-	    ;;
-    -d | --instance_id )
-      instance_id="$2"
-      shift 2
-      ;;
-    -k | --keypair )
-      keypair="$2"
-      shift 2
-      ;;
-    -r | --region )
-      region="$2"
-      shift 2
-      ;;
-    -h | --help)
-      help
-      ;;
-    --)
-      shift;
-      break
-      ;;
-    *)
-      echo "Unexpected option: $1"
-      exit 1
-      ;;
-  esac
+    case "$1" in
+        
+        -p | --port )
+            port="$2"
+            shift 2
+        ;;
+        -a | --aws_profile )
+            aws_profile="$2"
+            shift 2
+        ;;
+        -d | --instance_id )
+            instance_id="$2"
+            shift 2
+        ;;
+        -k | --keypair )
+            keypair="$2"
+            shift 2
+        ;;
+        -r | --region )
+            region="$2"
+            shift 2
+        ;;
+        -h | --help)
+            help
+        ;;
+        --)
+            shift;
+            break
+        ;;
+        *)
+            echo "Unexpected option: $1"
+            exit 1
+        ;;
+    esac
 done
 
 if [ ! -f "$HOME/.ssh/config" ]; then
-mkdir -p $HOME/.ssh/ && touch $HOME/.ssh/config
+    mkdir -p $HOME/.ssh/ && touch $HOME/.ssh/config
 cat >> $HOME/.ssh/config <<EOL
 Host *
         StrictHostKeyChecking no
         UserKnownHostsFile /dev/null
 EOL
 fi
+
+if [[ -z $port ]]; then
+    echo "port is set ! setup exited"
+    exit 0
+fi
+
+if [[ -z $aws_profile ]]; then
+    echo "aws profile is not set ! setup exited"
+    exit 0
+fi
+
+if [[ -z $keypair ]]; then
+    echo "keypair is not set ! setup exited"
+    exit 0
+fi
+
+if [[ -z $region ]]; then
+    echo "region profile is not set ! setup exited"
+    exit 0
+fi
+
+if [[ -z $instance_id ]]; then
+    echo "instance_id is not set ! setup exited"
+    exit 0
+fi
+
+
 export AWS_PROFILE=$aws_profile
 
 chown $USER:$USER $HOME/.ssh/config
